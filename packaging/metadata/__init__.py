@@ -1,12 +1,10 @@
 from email.parser import HeaderParser
 from email.message import Message
-from typing import Dict, Any, Iterator, Union, List
+from typing import Dict, Iterator, Union, List, Any
 import inspect
 import json
 from .constants import VERSIONED_METADATA_FIELDS
 import sys
-
-assert sys.version_info >= (3, 0)
 
 
 def _json_form(val: str) -> str:
@@ -27,8 +25,16 @@ def _canonicalize(
     return {_json_form(key): value for key, value in metadata.items()}
 
 
+def check_python_compatability() -> None:
+    if sys.version_info < (3, 0):
+        raise ModuleNotFoundError()
+
+
+check_python_compatability()
+
+
 class Metadata:
-    def __init__(self, **kwargs: Dict[str, Union[List[str], str]]) -> None:
+    def __init__(self, **kwargs: Union[List[str], str]) -> None:
         self._meta_dict = kwargs
 
     def __eq__(self, other: object) -> bool:
@@ -51,9 +57,13 @@ class Metadata:
     def to_json(self) -> str:
         return json.dumps(self._meta_dict, sort_keys=True)
 
+    def to_dict(self) -> Dict[str, Union[List[str], str]]:
+        return self._meta_dict
+
     def to_rfc822(self) -> str:
         msg = Message()
-        metadata_fields = VERSIONED_METADATA_FIELDS[self._meta_dict["metadata_version"]]
+        metadata_version = self._meta_dict["metadata_version"]
+        metadata_fields = VERSIONED_METADATA_FIELDS[metadata_version]
         for field in (
             metadata_fields["SINGLE"]
             | metadata_fields["MULTI"]
@@ -74,7 +84,7 @@ class Metadata:
 
         return msg.as_string()
 
-    def __iter__(self) -> Iterator:
+    def __iter__(self) -> Iterator[Any]:
         return iter(self._meta_dict.items())
 
     @classmethod
@@ -98,7 +108,7 @@ class Metadata:
           description key.
         - The result should be stored as a string-keyed dictionary.
         """
-        metadata = {}  # type : Dict[str, Union[List[str], str]]
+        metadata: Dict[str, Union[List[str], str]] = {}
         parsed = HeaderParser().parsestr(rfc822_string)
         metadata_fields = VERSIONED_METADATA_FIELDS[parsed.get("Metadata-Version")]
 
@@ -116,7 +126,7 @@ class Metadata:
         payload = parsed.get_payload()
         if payload:
             if "Description" in metadata:
-                raise Exception("Duplicate descriptions given")
+                print("Both Description and payload given - ignoring Description")
             metadata["Description"] = payload
 
         return _canonicalize(metadata)

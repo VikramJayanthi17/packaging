@@ -78,7 +78,7 @@ Requires-Dist: coverage ; extra == 'test'
 """
 
 
-VALID_PACKAGE_2_1_DICT = Metadata._pkginfo_string_to_dict(VALID_PACKAGE_2_1_RFC822)
+VALID_PACKAGE_2_1_DICT = Metadata._rfc822_string_to_dict(VALID_PACKAGE_2_1_RFC822)
 
 VALID_PACKAGE_2_1_JSON = json.dumps(VALID_PACKAGE_2_1_DICT, sort_keys=True)
 
@@ -127,7 +127,7 @@ Keywords: sample,setuptools,development
 Platform: UNKNOWN
 """
 
-VALID_PACKAGE_1_0_DICT = Metadata._pkginfo_string_to_dict(VALID_PACKAGE_1_0_RFC822)
+VALID_PACKAGE_1_0_DICT = Metadata._rfc822_string_to_dict(VALID_PACKAGE_1_0_RFC822)
 VALID_PACKAGE_1_0_JSON = json.dumps(VALID_PACKAGE_1_0_DICT, sort_keys=True)
 
 
@@ -146,7 +146,7 @@ Platform: UNKNOWN
 Requires-Python: >=3.5, <4
 """
 
-VALID_PACKAGE_1_2_DICT = Metadata._pkginfo_string_to_dict(VALID_PACKAGE_1_2_RFC822)
+VALID_PACKAGE_1_2_DICT = Metadata._rfc822_string_to_dict(VALID_PACKAGE_1_2_RFC822)
 VALID_PACKAGE_1_2_JSON = json.dumps(VALID_PACKAGE_1_2_DICT, sort_keys=True)
 
 VALID_PACKAGE_1_1_RFC822 = """Metadata-Version: 1.1
@@ -166,5 +166,5 @@ Classifier: Intended Audience :: Developers
 Classifier: Topic :: Software Development :: Build Tools
 """
 
-VALID_PACKAGE_1_1_DICT = Metadata._pkginfo_string_to_dict(VALID_PACKAGE_1_1_RFC822)
+VALID_PACKAGE_1_1_DICT = Metadata._rfc822_string_to_dict(VALID_PACKAGE_1_1_RFC822)
 VALID_PACKAGE_1_1_JSON = json.dumps(VALID_PACKAGE_1_1_DICT, sort_keys=True)

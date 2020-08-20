@@ -2,8 +2,7 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 from __future__ import absolute_import, division, print_function
-from packaging.metadata import Metadata
-from difflib import ndiff
+from packaging.metadata import Metadata, check_python_compatability
 from .test_metadata_constants import (
     VALID_PACKAGE_2_1_RFC822,
     VALID_PACKAGE_2_1_JSON,
@@ -11,7 +10,6 @@ from .test_metadata_constants import (
     VALID_PACKAGE_1_0_RFC822,
     VALID_PACKAGE_1_0_DICT,
     VALID_PACKAGE_1_0_JSON,
-    VALID_PACKAGE_1_0_RFC822,
     VALID_PACKAGE_1_1_RFC822,
     VALID_PACKAGE_1_1_DICT,
     VALID_PACKAGE_1_1_JSON,
@@ -22,8 +20,8 @@ from .test_metadata_constants import (
     VALID_PACKAGE_1_0_SINGLE_LINE_DESC,
 )
 
-# from .test_metadata_constants import *
 import pytest
+import sys
 
 
 class TestMetaData:
@@ -34,7 +32,7 @@ class TestMetaData:
             keywords=["a", "b", "c"],
             description="Hello\nworld",
         )
-        assert metadata.meta_dict == {
+        assert metadata._meta_dict == {
             "name": "foo",
             "version": "1.0",
             "keywords": ["a", "b", "c"],
@@ -99,11 +97,6 @@ class TestMetaData:
         metadata_1 = Metadata(**input_dict)
         generated_json_string = metadata_1.to_json()
 
-        print("Expected json string:")
-        print(expected_json_string)
-        print("\n\nGenerated json string:")
-        print(generated_json_string)
-
         assert expected_json_string == generated_json_string
 
     @pytest.mark.parametrize(
@@ -151,20 +144,22 @@ class TestMetaData:
         )
 
         for key, value in metadata_1.__iter__():
-            assert key in metadata_1.meta_dict
-            assert metadata_1.meta_dict[key] == value
+            assert key in metadata_1._meta_dict
+            assert metadata_1._meta_dict[key] == value
 
     def test_repeated_description_in_rfc822(self):
         metadata_1 = Metadata.from_rfc822(VALID_PACKAGE_1_0_REPEATED_DESC)
-        expected_description = "# This is the long description\n\nThis will overwrite the Description field\n"
+        expected_description = (
+            "# This is the long description\n\n"
+            + "This will overwrite the Description field\n"
+        )
 
-        assert metadata_1.meta_dict["description"] == expected_description
-
+        assert metadata_1._meta_dict["description"] == expected_description
 
     def test_single_line_description_in_rfc822(self):
         metdata_1 = Metadata.from_rfc822(VALID_PACKAGE_1_0_SINGLE_LINE_DESC)
 
-        description = metdata_1.meta_dict["description"]
+        description = metdata_1._meta_dict["description"]
 
         assert len(description.splitlines()) == 1
 
@@ -211,8 +206,13 @@ class TestMetaData:
                     "description": "Hello\nworld",
                 }
             )
-            == False
+            == NotImplemented
         )
+
+    def test_raise_when_python2(self, monkeypatch):
+        with pytest.raises(ModuleNotFoundError):
+            monkeypatch.setattr(sys, "version_info", (2, 0))
+            check_python_compatability()
 
     @classmethod
     def _compare_rfc822_strings(cls, rfc822_1, rfc822_2):

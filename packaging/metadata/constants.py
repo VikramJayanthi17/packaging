@@ -116,4 +116,6 @@ VERSIONED_METADATA_FIELDS = {
         "TREAT_AS_MULTI": TREAT_AS_MULTI_2_1,
         "SINGLE": SINGLE_2_1,
     },
-}  # type : typing.Dict[str, object]
+}  # type : typing.Any
+
+# typing.Dict[typing.Union[typing.List[str],str], typing.Dict[str, typing.Set[str]]]
