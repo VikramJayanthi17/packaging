@@ -1,48 +1,65 @@
 from email.parser import HeaderParser
 from email.message import Message
 from typing import Dict, Any, Iterator, Union, List
+import inspect
 import json
 from .constants import VERSIONED_METADATA_FIELDS
 import sys
 
 assert sys.version_info >= (3, 0)
 
-def json_form(val: str) -> str:
+
+def _json_form(val: str) -> str:
     return val.lower().replace("-", "_")
+
+
+def _canonicalize(
+    metadata: Dict[str, Union[List[str], str]]
+) -> Dict[str, Union[List[str], str]]:
+    """
+    Transforms a metadata object to the canonical representation
+    as specified in
+    https://www.python.org/dev/peps/pep-0566/#json-compatible-metadata
+    All transformed keys should be reduced to lower case. Hyphens
+    should be replaced with underscores, but otherwise should retain all
+    other characters.
+    """
+    return {_json_form(key): value for key, value in metadata.items()}
+
 
 class Metadata:
     def __init__(self, **kwargs: Dict[str, Union[List[str], str]]) -> None:
-        self.meta_dict = kwargs
+        self._meta_dict = kwargs
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Metadata):
-            return self.meta_dict == other.meta_dict
-        return False
+            return self._meta_dict == other._meta_dict
+        return NotImplemented
 
     @classmethod
     def from_json(cls, data: str) -> "Metadata":
-        return cls(**Metadata._canonicalize(json.loads(data)))
+        return cls(**_canonicalize(json.loads(data)))
 
     @classmethod
     def from_dict(cls, data: Dict[str, Union[List[str], str]]) -> "Metadata":
-        return cls(**Metadata._canonicalize(data))
+        return cls(**_canonicalize(data))
 
     @classmethod
-    def from_rfc822(cls, pkginfo_string: str) -> "Metadata":
-        return cls(**Metadata._pkginfo_string_to_dict(pkginfo_string))
+    def from_rfc822(cls, rfc822_string: str) -> "Metadata":
+        return cls(**Metadata._rfc822_string_to_dict(rfc822_string))
 
     def to_json(self) -> str:
-        return json.dumps(self.meta_dict, sort_keys=True)
+        return json.dumps(self._meta_dict, sort_keys=True)
 
     def to_rfc822(self) -> str:
         msg = Message()
-        metadata_fields = VERSIONED_METADATA_FIELDS[self.meta_dict["metadata_version"]]
+        metadata_fields = VERSIONED_METADATA_FIELDS[self._meta_dict["metadata_version"]]
         for field in (
             metadata_fields["SINGLE"]
             | metadata_fields["MULTI"]
             | metadata_fields["TREAT_AS_MULTI"]
         ):
-            value = self.meta_dict.get(json_form(field))
+            value = self._meta_dict.get(_json_form(field))
             if value:
                 if field == "Description":
                     # Special case - put in payload
@@ -57,15 +74,12 @@ class Metadata:
 
         return msg.as_string()
 
-    def to_dict(self) -> Dict[str, Union[List[str], str]]:
-        return self.meta_dict
-
     def __iter__(self) -> Iterator:
-        return iter(self.meta_dict.items())
+        return iter(self._meta_dict.items())
 
     @classmethod
-    def _pkginfo_string_to_dict(
-        cls, pkg_info_string: str
+    def _rfc822_string_to_dict(
+        cls, rfc822_string: str
     ) -> Dict[str, Union[List[str], str]]:
         """Extracts metadata information from a metadata-version 2.1 object.
 
@@ -85,43 +99,27 @@ class Metadata:
         - The result should be stored as a string-keyed dictionary.
         """
         metadata = {}  # type : Dict[str, Union[List[str], str]]
-        parsed = HeaderParser().parsestr(pkg_info_string)
+        parsed = HeaderParser().parsestr(rfc822_string)
         metadata_fields = VERSIONED_METADATA_FIELDS[parsed.get("Metadata-Version")]
 
         for key, value in parsed.items():
-
             if key in metadata_fields["MULTI"]:
-                if key not in metadata:
-                    metadata[key] = []
-                metadata[key].append(value)
+                metadata.setdefault(key, []).append(value)
             elif key in metadata_fields["TREAT_AS_MULTI"]:
                 metadata[key] = [val.strip() for val in value.split(",")]
+            elif key == "Description":
+                metadata[key] = inspect.cleandoc(value)
             else:
                 metadata[key] = value
 
+        # Handle the message payload
         payload = parsed.get_payload()
         if payload:
-
             if "Description" in metadata:
-                print("Both Description and payload given - ignoring Description")
-
+                raise Exception("Duplicate descriptions given")
             metadata["Description"] = payload
 
-        return Metadata._canonicalize(metadata)
-
-    @classmethod
-    def _canonicalize(
-        cls, metadata: Dict[str, Union[List[str], str]]
-    ) -> Dict[str, Union[List[str], str]]:
-        """
-        Transforms a metadata object to the canonical representation
-        as specified in
-        https://www.python.org/dev/peps/pep-0566/#json-compatible-metadata
-        All transformed keys should be reduced to lower case. Hyphens
-        should be replaced with underscores, but otherwise should retain all
-        other characters.
-        """
-        return {json_form(key): value for key, value in metadata.items()}
+        return _canonicalize(metadata)
 
     def validate(self) -> bool:
         raise NotImplementedError
