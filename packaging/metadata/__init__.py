@@ -1,6 +1,7 @@
 from email.parser import HeaderParser
 from email.message import Message
 from typing import Dict, Iterator, Union, List, Any
+from typing_extensions import TypedDict
 import inspect
 import json
 from .constants import VERSIONED_METADATA_FIELDS
@@ -33,9 +34,42 @@ def check_python_compatability() -> None:
 check_python_compatability()
 
 
+class MetaDict(TypedDict):
+    # Multi
+    platform: List[str]
+    supported_platform: List[str]
+    classifier: List[str]
+    requires_dist: List[str]
+    provides_dist: List[str]
+    obsoletes_dist: List[str]
+    requires_external: List[str]
+    project_url: List[str]
+    provides_extra: List[str]
+
+    # Treat As Multi
+    keywords: List[str]
+    # Single
+    metadata_version: str
+    name: str
+    version: str
+    summary: str
+    description: str
+    description_content_type: str
+    home_page: str
+    download_url: str
+    author: str
+    author_email: str
+    maintainer: str
+    maintainer_email: str
+    license: str
+    requires_python: str
+
+
 class Metadata:
     def __init__(self, **kwargs: Union[List[str], str]) -> None:
-        self._meta_dict = kwargs
+        self._meta_dict: MetaDict = MetaDict()
+        for key, value in kwargs.items():
+            self._meta_dict[key] = value
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Metadata):
@@ -57,7 +91,7 @@ class Metadata:
     def to_json(self) -> str:
         return json.dumps(self._meta_dict, sort_keys=True)
 
-    def to_dict(self) -> Dict[str, Union[List[str], str]]:
+    def to_dict(self) -> MetaDict:
         return self._meta_dict
 
     def to_rfc822(self) -> str:
